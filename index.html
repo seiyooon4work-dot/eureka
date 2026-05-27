@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>화이트보드 가시성 보정 시뮬레이터</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f4f6f8;
+      color: #1f2937;
+    }
+
+    header {
+      padding: 28px 20px;
+      background: #111827;
+      color: white;
+    }
+
+    header h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+
+    header p {
+      margin: 0;
+      color: #d1d5db;
+      line-height: 1.6;
+    }
+
+    main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px 16px 60px;
+    }
+
+    section {
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+    }
+
+    h2 {
+      margin-top: 0;
+      font-size: 22px;
+    }
+
+    h3 {
+      margin-bottom: 8px;
+    }
+
+    .notice {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      color: #7c2d12;
+      padding: 14px 16px;
+      border-radius: 12px;
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 16px;
+      background: #fafafa;
+    }
+
+    .card .label {
+      color: #6b7280;
+      font-size: 14px;
+      margin-bottom: 6px;
+    }
+
+    .card .value {
+      font-size: 28px;
+      font-weight: 700;
+    }
+
+    .card .desc {
+      font-size: 13px;
+      color: #6b7280;
+      margin-top: 6px;
+      line-height: 1.5;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 14px 0;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 10px 14px;
+      background: #2563eb;
+      color: white;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    button.secondary {
+      background: #374151;
+    }
+
+    button.danger {
+      background: #dc2626;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 980px;
+    }
+
+    th, td {
+      border-bottom: 1px solid #e5e7eb;
+      padding: 8px;
+      text-align: center;
+      font-size: 14px;
+    }
+
+    th {
+      background: #f9fafb;
+      color: #374151;
+      font-weight: 700;
+    }
+
+    input[type="text"],
+    input[type="number"] {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+    }
+
+    .slider-row {
+      display: grid;
+      grid-template-columns: 160px 1fr 70px;
+      gap: 12px;
+      align-items: center;
+      margin: 12px 0;
+    }
+
+    .result-box {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .formula {
+      background: #f3f4f6;
+      border-radius: 12px;
+      padding: 14px;
+      line-height: 1.7;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 14px;
+      overflow-x: auto;
+    }
+
+    .bar {
+      height: 12px;
+      background: #e5e7eb;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .bar span {
+      display: block;
+      height: 100%;
+      background: #2563eb;
+      width: 0%;
+    }
+
+    canvas {
+      width: 100%;
+      max-width: 100%;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      background: white;
+    }
+
+    .small {
+      font-size: 13px;
+      color: #6b7280;
+      line-height: 1.6;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 140px;
+      border: 1px solid #d1d5db;
+      border-radius: 12px;
+      padding: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 13px;
+    }
+
+    @media (max-width: 900px) {
+      .grid, .result-box {
+        grid-template-columns: 1fr;
+      }
+
+      .slider-row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>화이트보드 가시성 보정 시뮬레이터</h1>
+    <p>
+      실제 재질 실험값을 입력하고, 그 값을 바탕으로 이상적인 표면 조건을 예측하는 간단한 모델 보정 앱입니다.
+    </p>
+  </header>
+
+  <main>
+    <section>
+      <div class="notice">
+        현재 표의 숫자는 모두 임시 예시값입니다. 실제 실험값이 나오면 표의 숫자를 직접 수정하십시오.
+        이 앱은 정답을 내는 도구가 아니라, 실험값을 기반으로 “가시성 좋은 표면의 방향”을 추정하는 도구입니다.
+      </div>
+
+      <h2>1. 실험 데이터 입력</h2>
+      <p class="small">
+        모든 값은 0~100 기준입니다. 값이 클수록 해당 성질이 강하다는 뜻입니다.
+        예를 들어 정반사 값이 높으면 눈부심이 강하고, 지움성 값이 높으면 잘 지워지는 표면입니다.
+      </p>
+
+      <div class="controls">
+        <button onclick="addRow()">재질 추가</button>
+        <button class="secondary" onclick="saveData()">저장</button>
+        <button class="secondary" onclick="loadData()">불러오기</button>
+        <button class="danger" onclick="resetData()">예시값으로 초기화</button>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>재질</th>
+              <th>거칠기<br>현미경/마찰</th>
+              <th>마찰 지표</th>
+              <th>정반사</th>
+              <th>난반사</th>
+              <th>글씨 대비</th>
+              <th>지움성</th>
+              <th>주관 가시성</th>
+              <th>삭제</th>
+            </tr>
+          </thead>
+          <tbody id="dataBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>2. 보정 모델 결과</h2>
+
+      <div class="grid">
+        <div class="card">
+          <div class="label">현재 최적 재질</div>
+          <div class="value" id="bestMaterial">-</div>
+          <div class="desc">입력된 실제 재질 중 종합 점수가 가장 높은 재질입니다.</div>
+        </div>
+
+        <div class="card">
+          <div class="label">최고 종합 점수</div>
+          <div class="value" id="bestActualScore">-</div>
+          <div class="desc">가시성 70%, 지움성 30% 기준입니다.</div>
+        </div>
+
+        <div class="card">
+          <div class="label">예측 최적 거칠기</div>
+          <div class="value" id="bestRoughness">-</div>
+          <div class="desc">모델이 추정한 이상 표면의 거칠기 수준입니다.</div>
+        </div>
+
+        <div class="card">
+          <div class="label">예측 최적 마찰</div>
+          <div class="value" id="bestFriction">-</div>
+          <div class="desc">모델이 추정한 이상 표면의 마찰 수준입니다.</div>
+        </div>
+      </div>
+
+      <h3>점수 계산식</h3>
+      <div class="formula">
+        가시성 점수 = 0.45 × 글씨 대비 + 0.30 × (100 - 정반사) + 0.20 × 난반사 + 0.05 × 주관 가시성<br>
+        종합 점수 = 0.70 × 가시성 점수 + 0.30 × 지움성 점수
+      </div>
+    </section>
+
+    <section>
+      <h2>3. 이상 표면 직접 시뮬레이션</h2>
+      <p class="small">
+        거칠기와 마찰 값을 조절하면, 입력된 실험 데이터로 보정된 모델이 정반사, 난반사, 대비, 지움성을 예측합니다.
+      </p>
+
+      <div class="slider-row">
+        <label>가상 표면 거칠기</label>
+        <input id="roughnessSlider" type="range" min="0" max="100" value="45" oninput="updateSimulation()" />
+        <strong id="roughnessValue">45</strong>
+      </div>
+
+      <div class="slider-row">
+        <label>가상 표면 마찰</label>
+        <input id="frictionSlider" type="range" min="0" max="100" value="45" oninput="updateSimulation()" />
+        <strong id="frictionValue">45</strong>
+      </div>
+
+      <div class="result-box">
+        <div class="card">
+          <div class="label">예측 정반사</div>
+          <div class="value" id="simSpecular">-</div>
+          <div class="bar"><span id="barSpecular"></span></div>
+          <div class="desc">높을수록 특정 각도에서 눈부심이 강해질 가능성이 큽니다.</div>
+        </div>
+
+        <div class="card">
+          <div class="label">예측 난반사</div>
+          <div class="value" id="simDiffuse">-</div>
+          <div class="bar"><span id="barDiffuse"></span></div>
+          <div class="desc">높을수록 빛이 여러 방향으로 퍼집니다.</div>
+        </div>
+
+        <div class="card">
+          <div class="label">예측 글씨 대비</div>
+          <div class="value" id="simContrast">-</div>
+          <div class="bar"><span id="barContrast"></span></div>
+          <div class="desc">높을수록 글씨와 배경이 잘 구분됩니다.</div>
+        </div>
+
+        <div class="card">
+          <div class="label">예측 지움성</div>
+          <div class="value" id="simErase">-</div>
+          <div class="bar"><span id="barErase"></span></div>
+          <div class="desc">높을수록 보드마카가 잘 지워질 가능성이 큽니다.</div>
+        </div>
+      </div>
+
+      <div class="grid" style="margin-top: 16px;">
+        <div class="card">
+          <div class="label">예측 가시성 점수</div>
+          <div class="value" id="simVisibility">-</div>
+        </div>
+
+        <div class="card">
+          <div class="label">예측 종합 점수</div>
+          <div class="value" id="simTotal">-</div>
+        </div>
+
+        <div class="card">
+          <div class="label">판정</div>
+          <div class="value" id="simGrade">-</div>
+        </div>
+
+        <div class="card">
+          <div class="label">핵심 해석</div>
+          <div class="desc" id="simComment">-</div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>4. 거칠기-마찰 조합별 종합 점수 지도</h2>
+      <p class="small">
+        가로축은 거칠기, 세로축은 마찰입니다. 밝을수록 종합 점수가 높은 조합입니다.
+      </p>
+      <canvas id="heatmap" width="700" height="420"></canvas>
+    </section>
+
+    <section>
+      <h2>5. 데이터 내보내기 / 가져오기</h2>
+      <p class="small">
+        실험값을 JSON 형태로 보관할 수 있습니다. 보고서 작성 시 실험 데이터 기록용으로도 사용할 수 있습니다.
+      </p>
+
+      <div class="controls">
+        <button onclick="exportJSON()">JSON 내보내기</button>
+        <button class="secondary" onclick="importJSON()">JSON 가져오기</button>
+      </div>
+
+      <textarea id="jsonBox" placeholder="여기에 JSON 데이터가 표시됩니다."></textarea>
+    </section>
+  </main>
+
+  <script>
+    const STORAGE_KEY = "whiteboard_visibility_simulator_data_v1";
+
+    let rows = [
+      {
+        name: "일반 화이트보드",
+        roughness: 25,
+        friction: 30,
+        specular: 82,
+        diffuse: 25,
+        contrast: 62,
+        erase: 90,
+        subjective: 55
+      },
+      {
+        name: "무광 화이트보드",
+        roughness: 55,
+        friction: 58,
+        specular: 38,
+        diffuse: 70,
+        contrast: 78,
+        erase: 70,
+        subjective: 80
+      },
+      {
+        name: "반사 방지 필름",
+        roughness: 48,
+        friction: 52,
+        specular: 32,
+        diffuse: 76,
+        contrast: 82,
+        erase: 62,
+        subjective: 83
+      },
+      {
+        name: "종이질감 필름",
+        roughness: 78,
+        friction: 82,
+        specular: 24,
+        diffuse: 88,
+        contrast: 74,
+        erase: 42,
+        subjective: 68
+      },
+      {
+        name: "아크릴판",
+        roughness: 12,
+        friction: 18,
+        specular: 90,
+        diffuse: 18,
+        contrast: 55,
+        erase: 88,
+        subjective: 45
+      }
+    ];
+
+    function clamp(value, min = 0, max = 100) {
+      return Math.max(min, Math.min(max, Number(value) || 0));
+    }
+
+    function round(value, digits = 1) {
+      const p = Math.pow(10, digits);
+      return Math.round(value * p) / p;
+    }
+
+    function visibilityScore(row) {
+      return clamp(
+        0.45 * row.contrast +
+        0.30 * (100 - row.specular) +
+        0.20 * row.diffuse +
+        0.05 * row.subjective
+      );
+    }
+
+    function totalScore(row) {
+      return clamp(0.70 * visibilityScore(row) + 0.30 * row.erase);
+    }
+
+    function featureVector(roughness, friction) {
+      const r = roughness / 100;
+      const f = friction / 100;
+      return [1, r, f, r * r, f * f, r * f];
+    }
+
+    function solveLinearSystem(A, b) {
+      const n = A.length;
+
+      for (let i = 0; i < n; i++) {
+        let maxRow = i;
+
+        for (let k = i + 1; k < n; k++) {
+          if (Math.abs(A[k][i]) > Math.abs(A[maxRow][i])) {
+            maxRow = k;
+          }
+        }
+
+        [A[i], A[maxRow]] = [A[maxRow], A[i]];
+        [b[i], b[maxRow]] = [b[maxRow], b[i]];
+
+        const pivot = A[i][i];
+
+        if (Math.abs(pivot) < 1e-9) {
+          continue;
+        }
+
+        for (let j = i; j < n; j++) {
+          A[i][j] /= pivot;
+        }
+
+        b[i] /= pivot;
+
+        for (let k = 0; k < n; k++) {
+          if (k === i) continue;
+
+          const factor = A[k][i];
+
+          for (let j = i; j < n; j++) {
+            A[k][j] -= factor * A[i][j];
+          }
+
+          b[k] -= factor * b[i];
+        }
+      }
+
+      return b;
+    }
+
+    function trainModel(targetKey) {
+      const lambda = 0.18;
+      const size = 6;
+
+      const XtX = Array.from({ length: size }, () => Array(size).fill(0));
+      const Xty = Array(size).fill(0);
+
+      rows.forEach(row => {
+        const x = featureVector(row.roughness, row.friction);
+        const y = row[targetKey];
+
+        for (let i = 0; i < size; i++) {
+          Xty[i] += x[i] * y;
+
+          for (let j = 0; j < size; j++) {
+            XtX[i][j] += x[i] * x[j];
+          }
+        }
+      });
+
+      for (let i = 0; i < size; i++) {
+        XtX[i][i] += lambda;
+      }
+
+      return solveLinearSystem(
+        XtX.map(row => row.slice()),
+        Xty.slice()
+      );
+    }
+
+    function predictWithModel(model, roughness, friction) {
+      const x = featureVector(roughness, friction);
+      let y = 0;
+
+      for (let i = 0; i < x.length; i++) {
+        y += model[i] * x[i];
+      }
+
+      return clamp(y);
+    }
+
+    function buildModels() {
+      return {
+        specular: trainModel("specular"),
+        diffuse: trainModel("diffuse"),
+        contrast: trainModel("contrast"),
+        erase: trainModel("erase")
+      };
+    }
+
+    function predictSurface(roughness, friction) {
+      const models = buildModels();
+
+      const predicted = {
+        roughness,
+        friction,
+        specular: predictWithModel(models.specular, roughness, friction),
+        diffuse: predictWithModel(models.diffuse, roughness, friction),
+        contrast: predictWithModel(models.contrast, roughness, friction),
+        erase: predictWithModel(models.erase, roughness, friction),
+        subjective: 70
+      };
+
+      predicted.visibility = visibilityScore(predicted);
+      predicted.total = totalScore(predicted);
+
+      return predicted;
+    }
+
+    function findBestVirtualSurface() {
+      let best = null;
+
+      for (let roughness = 0; roughness <= 100; roughness += 2) {
+        for (let friction = 0; friction <= 100; friction += 2) {
+          const p = predictSurface(roughness, friction);
+
+          if (!best || p.total > best.total) {
+            best = p;
+          }
+        }
+      }
+
+      return best;
+    }
+
+    function renderTable() {
+      const body = document.getElementById("dataBody");
+      body.innerHTML = "";
+
+      rows.forEach((row, index) => {
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+          <td>
+            <input type="text" value="${row.name}" 
+              onchange="updateCell(${index}, 'name', this.value)" />
+          </td>
+          <td>
+            <input type="number" min="0" max="100" value="${row.roughness}" 
+              onchange="updateCell(${index}, 'roughness', this.value)" />
+          </td>
+          <td>
+            <input type="number" min="0" max="100" value="${row.friction}" 
+              onchange="updateCell(${index}, 'friction', this.value)" />
+          </td>
+          <td>
+            <input type="number" min="0" max="100" value="${row.specular}" 
+              onchange="updateCell(${index}, 'specular', this.value)" />
+          </td>
+          <td>
+            <input type="number" min="0" max="100" value="${row.diffuse}" 
+              onchange="updateCell(${index}, 'diffuse', this.value)" />
+          </td>
+          <td>
+            <input type="number" min="0" max="100" value="${row.contrast}" 
+              onchange="updateCell(${index}, 'contrast', this.value)" />
+          </td>
+          <td>
+            <input type="number" min="0" max="100" value="${row.erase}" 
+              onchange="updateCell(${index}, 'erase', this.value)" />
+          </td>
+          <td>
+            <input type="number" min="0" max="100" value="${row.subjective}" 
+              onchange="updateCell(${index}, 'subjective', this.value)" />
+          </td>
+          <td>
+            <button class="danger" onclick="removeRow(${index})">삭제</button>
+          </td>
+        `;
+
+        body.appendChild(tr);
+      });
+    }
+
+    function updateCell(index, key, value) {
+      if (key === "name") {
+        rows[index][key] = value;
+      } else {
+        rows[index][key] = clamp(value);
+      }
+
+      updateAll();
+    }
+
+    function addRow() {
+      rows.push({
+        name: "새 재질",
+        roughness: 50,
+        friction: 50,
+        specular: 50,
+        diffuse: 50,
+        contrast: 50,
+        erase: 50,
+        subjective: 50
+      });
+
+      updateAll();
+    }
+
+    function removeRow(index) {
+      if (rows.length <= 3) {
+        alert("보정 모델을 만들려면 최소 3개의 재질 데이터가 필요합니다.");
+        return;
+      }
+
+      rows.splice(index, 1);
+      updateAll();
+    }
+
+    function updateSummary() {
+      let bestActual = rows[0];
+
+      rows.forEach(row => {
+        if (totalScore(row) > totalScore(bestActual)) {
+          bestActual = row;
+        }
+      });
+
+      const bestVirtual = findBestVirtualSurface();
+
+      document.getElementById("bestMaterial").textContent = bestActual.name;
+      document.getElementById("bestActualScore").textContent = round(totalScore(bestActual), 1);
+      document.getElementById("bestRoughness").textContent = round(bestVirtual.roughness, 1);
+      document.getElementById("bestFriction").textContent = round(bestVirtual.friction, 1);
+    }
+
+    function grade(total) {
+      if (total >= 85) return "매우 우수";
+      if (total >= 75) return "우수";
+      if (total >= 65) return "보통";
+      if (total >= 55) return "주의";
+      return "부적합";
+    }
+
+    function commentFor(p) {
+      if (p.specular > 70) {
+        return "정반사가 강해서 특정 자리에서 눈부심이 생길 가능성이 큽니다.";
+      }
+
+      if (p.erase < 50) {
+        return "가시성은 괜찮을 수 있으나 지움성이 약해 실사용성이 떨어질 수 있습니다.";
+      }
+
+      if (p.contrast > 75 && p.specular < 45 && p.erase > 60) {
+        return "글씨 대비, 눈부심 억제, 지움성의 균형이 비교적 좋습니다.";
+      }
+
+      if (p.diffuse > 80 && p.contrast < 65) {
+        return "난반사가 강하지만 글씨 대비가 충분하지 않을 수 있습니다.";
+      }
+
+      return "극단적인 장단점은 적지만, 실제 실험값으로 추가 검증이 필요합니다.";
+    }
+
+    function setBar(id, value) {
+      document.getElementById(id).style.width = `${clamp(value)}%`;
+    }
+
+    function updateSimulation() {
+      const roughness = Number(document.getElementById("roughnessSlider").value);
+      const friction = Number(document.getElementById("frictionSlider").value);
+
+      document.getElementById("roughnessValue").textContent = roughness;
+      document.getElementById("frictionValue").textContent = friction;
+
+      const p = predictSurface(roughness, friction);
+
+      document.getElementById("simSpecular").textContent = round(p.specular, 1);
+      document.getElementById("simDiffuse").textContent = round(p.diffuse, 1);
+      document.getElementById("simContrast").textContent = round(p.contrast, 1);
+      document.getElementById("simErase").textContent = round(p.erase, 1);
+      document.getElementById("simVisibility").textContent = round(p.visibility, 1);
+      document.getElementById("simTotal").textContent = round(p.total, 1);
+      document.getElementById("simGrade").textContent = grade(p.total);
+      document.getElementById("simComment").textContent = commentFor(p);
+
+      setBar("barSpecular", p.specular);
+      setBar("barDiffuse", p.diffuse);
+      setBar("barContrast", p.contrast);
+      setBar("barErase", p.erase);
+    }
+
+    function drawHeatmap() {
+      const canvas = document.getElementById("heatmap");
+      const ctx = canvas.getContext("2d");
+
+      const width = canvas.width;
+      const height = canvas.height;
+
+      ctx.clearRect(0, 0, width, height);
+
+      const marginLeft = 50;
+      const marginBottom = 40;
+      const marginTop = 20;
+      const marginRight = 20;
+
+      const plotW = width - marginLeft - marginRight;
+      const plotH = height - marginTop - marginBottom;
+
+      const step = 4;
+      let best = null;
+
+      for (let r = 0; r <= 100; r += step) {
+        for (let f = 0; f <= 100; f += step) {
+          const p = predictSurface(r, f);
+
+          if (!best || p.total > best.total) {
+            best = p;
+          }
+
+          const x = marginLeft + (r / 100) * plotW;
+          const y = marginTop + plotH - (f / 100) * plotH;
+
+          const intensity = Math.round(255 - p.total * 2.2);
+          const blue = Math.round(120 + p.total * 1.2);
+
+          ctx.fillStyle = `rgb(${intensity}, ${intensity}, ${blue})`;
+          ctx.fillRect(x, y, plotW * step / 100 + 1, plotH * step / 100 + 1);
+        }
+      }
+
+      ctx.strokeStyle = "#111827";
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(marginLeft, marginTop, plotW, plotH);
+
+      ctx.fillStyle = "#111827";
+      ctx.font = "14px system-ui";
+      ctx.fillText("거칠기", marginLeft + plotW / 2 - 20, height - 10);
+
+      ctx.save();
+      ctx.translate(16, marginTop + plotH / 2 + 25);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText("마찰", 0, 0);
+      ctx.restore();
+
+      const bestX = marginLeft + (best.roughness / 100) * plotW;
+      const bestY = marginTop + plotH - (best.friction / 100) * plotH;
+
+      ctx.beginPath();
+      ctx.arc(bestX, bestY, 7, 0, Math.PI * 2);
+      ctx.fillStyle = "#dc2626";
+      ctx.fill();
+
+      ctx.fillStyle = "#dc2626";
+      ctx.font = "13px system-ui";
+      ctx.fillText(
+        `최적점 (${round(best.roughness, 0)}, ${round(best.friction, 0)})`,
+        bestX + 10,
+        bestY - 10
+      );
+    }
+
+    function saveData() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
+      alert("저장되었습니다.");
+    }
+
+    function loadData() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+
+      if (!saved) {
+        alert("저장된 데이터가 없습니다.");
+        return;
+      }
+
+      rows = JSON.parse(saved);
+      updateAll();
+    }
+
+    function resetData() {
+      localStorage.removeItem(STORAGE_KEY);
+      location.reload();
+    }
+
+    function exportJSON() {
+      document.getElementById("jsonBox").value = JSON.stringify(rows, null, 2);
+    }
+
+    function importJSON() {
+      const text = document.getElementById("jsonBox").value.trim();
+
+      if (!text) {
+        alert("가져올 JSON 데이터를 입력하십시오.");
+        return;
+      }
+
+      try {
+        const parsed = JSON.parse(text);
+
+        if (!Array.isArray(parsed)) {
+          throw new Error("배열 형식이 아닙니다.");
+        }
+
+        rows = parsed.map(row => ({
+          name: row.name || "이름 없음",
+          roughness: clamp(row.roughness),
+          friction: clamp(row.friction),
+          specular: clamp(row.specular),
+          diffuse: clamp(row.diffuse),
+          contrast: clamp(row.contrast),
+          erase: clamp(row.erase),
+          subjective: clamp(row.subjective)
+        }));
+
+        if (rows.length < 3) {
+          alert("최소 3개의 재질 데이터가 필요합니다.");
+          return;
+        }
+
+        updateAll();
+        alert("가져오기가 완료되었습니다.");
+      } catch (error) {
+        alert("JSON 형식이 올바르지 않습니다.");
+      }
+    }
+
+    function updateAll() {
+      renderTable();
+      updateSummary();
+      updateSimulation();
+      drawHeatmap();
+    }
+
+    updateAll();
+  </script>
+</body>
+</html>
